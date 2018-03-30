@@ -1,10 +1,11 @@
-
+//TODO: Hold the shape & offset info
 var data = {
 	people:[]
 	,events:[]
 };
 var filtered = {people:[], events:[]};
 
+//TODO: Allow this to be user editable
 function getColor(titles){
 	var colors = {
 		'founding father':'orange'
@@ -34,11 +35,14 @@ var ctx;
 $(function(){
 	$("#C").width($( window ).width()-10);
 	$( window ).resize(function() {
-		$("#C").width($( window ).width());
+		$("#C").width($( window ).width()-10);
 		draw(filtered.people.length==0?data:filtered);
 	});
 	ctx = $("#C")[0].getContext("2d");	
-	$("select[name=shown]").change(function(){draw(filterData($("select[name=shown]").val()))});
+	$("select[name=people]").change(function(){draw(filterData())});
+	$("select[name=events]").change(function(){draw(filterData())});
+	
+	//TODO: Allow user to change data source
     $.getJSON("https://spreadsheets.google.com/feeds/list/1p7N271XNTghpJhdP7qXsFaBZcFNRuG-npiUZK-1ZTAY/od6/public/values?alt=json", function (jdata) {
 		var orphaned_things = []
 		function addItem(item){
@@ -51,10 +55,10 @@ $(function(){
 					//Build title filter
 					var titles = item.title.split(',');
 					for(var i=0; i<titles.length; i++){
-						var optionExists = ($("select[name=shown] option[value='" + titles[i] + "']").length > 0);
+						var optionExists = ($("select[name=events] option[value='" + titles[i].toUpperCase() + "']").length > 0);
 						if(!optionExists)
 						{
-							$('select[name=shown]').append("<option value='"+titles[i]+"'>"+titles[i]+"</option>");
+							$('select[name=events]').append("<option value='"+titles[i].toUpperCase()+"'>"+titles[i]+"</option>");
 						}
 					}
 					break;
@@ -72,10 +76,10 @@ $(function(){
 					//Build title filter
 					var titles = item.title.split(',');
 					for(var i=0; i<titles.length; i++){
-						var optionExists = ($("select[name=shown] option[value='" + titles[i] + "']").length > 0);
+						var optionExists = ($("select[name=people] option[value='" + titles[i].toUpperCase() + "']").length > 0);
 						if(!optionExists)
 						{
-							$('select[name=shown]').append("<option value='"+titles[i]+"'>"+titles[i]+"</option>");
+							$('select[name=people]').append("<option value='"+titles[i].toUpperCase()+"'>"+titles[i]+"</option>");
 						}
 					}
 					break
@@ -99,6 +103,7 @@ $(function(){
 				,start:jdata.feed.entry[i].gsx$start.$t
 				,end:jdata.feed.entry[i].gsx$end.$t == ""?"3/16/2018":jdata.feed.entry[i].gsx$end.$t
 				,timeline:[]
+				,getRec: function(xOffSet,yOffset,xScale,yScale){return{x:0,y:0,width:0,height:0}}
 			}
 			
 			addItem(item);
@@ -112,9 +117,11 @@ $(function(){
 });
 
 var addedItems = [];
-function filterData(values){
+function filterData(){
 	filtered = {people:[], events:[]};
-	values = values.map(function(x){return x.toUpperCase()})
+	var people = $("select[name=people]").val().map(function(x){return x.toUpperCase()});
+	var events = $("select[name=events]").val().map(function(x){return x.toUpperCase()});
+	
 	var minDate = Number.MAX_SAFE_INTEGER
 	var maxDate = Number.MIN_SAFE_INTEGER
 	
@@ -126,7 +133,7 @@ function filterData(values){
 		if( $.inArray(data.people[i].name,addedItems) >=0 ){  continue;}
 		var titles = data.people[i].title.split(',').map(function(x){return x.toUpperCase()})
 		for(var j=0; j<titles.length; j++){
-			if($.inArray(titles[j],values)>=0){
+			if($.inArray(titles[j],people)>=0){
 				var start = (new Date(data.people[i].start))*1;
 				var end = (new Date(data.people[i].end))*1;
 				
@@ -146,7 +153,7 @@ function filterData(values){
 		
 		var titles = data.events[i].title.split(',').map(function(x){return x.toUpperCase()})
 		for(var j=0; j<titles.length; j++){
-			if($.inArray(titles[j],values)>=0){
+			if($.inArray(titles[j],events)>=0){
 				var start = (new Date(data.events[i].start))*1;
 				var end = (new Date(data.events[i].end))*1;
 				
@@ -156,61 +163,6 @@ function filterData(values){
 				filtered.events.push( JSON.parse(JSON.stringify(data.events[i])) )
 				addedItems.push(data.events[i].name);
 				break;
-			}
-		}
-	}
-	
-	if(isPersonFilter & !isEventFilter){
-		//Add events for these people
-		for(var i=0; i<data.events.length; i++){
-			
-			if( $.inArray(data.events[i].name,addedItems) >=0 ){continue;}
-			
-			var start = (new Date(data.events[i].start))*1;
-			var end = (new Date(data.events[i].end))*1;
-			
-			if( (start > minDate && start < maxDate) || (end > minDate && end < maxDate)){
-				filtered.events.push( JSON.parse(JSON.stringify(data.events[i])) )
-				addedItems.push(data.people[i].name);
-				break;
-			}
-		}
-	}
-	
-	if(isEventFilter & !isPersonFilter){
-		//Add people for these events
-		for(var i=0; i<data.people.length; i++){
-			if( $.inArray(data.people[i].name,addedItems) >=0 ){continue;}
-			
-			var start = (new Date(data.people[i].start))*1;
-			var end = (new Date(data.people[i].end))*1;
-			
-			//did the event start in this person's lifetime?
-			if( minDate > start && minDate < end) {
-				filtered.people.push( JSON.parse(JSON.stringify(data.people[i])) )
-				addedItems.push(data.people[i].name);
-				continue;
-			}
-			
-			//did the event end in this person's lifetime?
-			if(maxDate > start && maxDate < end){
-				filtered.people.push( JSON.parse(JSON.stringify(data.people[i])) )
-				addedItems.push(data.people[i].name);
-				continue;
-			}
-			
-			//was this person born in the event's lifetime
-			if(start > minDate && start < maxDate){
-				filtered.people.push( JSON.parse(JSON.stringify(data.people[i])) )
-				addedItems.push(data.people[i].name);
-				continue;
-			}
-			
-			//did this person die in the event's lifetime
-			if(end > minDate && end < maxDate){
-				filtered.people.push( JSON.parse(JSON.stringify(data.people[i])) )
-				addedItems.push(data.people[i].name);
-				continue;
 			}
 		}
 	}
@@ -227,8 +179,8 @@ function find(what, which){
 	return false;
 }
 
+//TODO: refactor as intersect function to allow re-use for mouse over context
 function getRowAssignment(who,start,end){
-	
 	var found_row = true;
 	for(var i=0; i<lines.length; i++){
 		var collided_with = 'no boby';
@@ -264,6 +216,9 @@ function getRowAssignment(who,start,end){
 	lines.push({row:lines.length, blocks:[{who:who,start:start,end:end}]});
 	return lines.length-1;
 }	
+
+//TODO: separate out the data from the drawing
+//TODO: add mouse over context
 function draw(d){
 	ctx.clearRect(0, 0, $("#C").width()*2, $("#C").height()*2);
 	lines = [];
@@ -293,7 +248,7 @@ function draw(d){
 	
 	xOffset = minDate*-1;
 	yOffset = 50;
-	xScale = ((maxDate+xOffset)-(minDate + xOffset))/$("#C").width();
+	xScale = ((maxDate+xOffset)-(minDate + xOffset))/1400;
 
 	for(var i=0; i<d.events.length; i++){
 		if(!d.events[i].name){continue;}
