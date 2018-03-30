@@ -6,7 +6,12 @@ var data = {
 	,maxDate:Number.MIN_SAFE_INTEGER
 };
 	
-var filtered = {people:[], events:[]};
+var filtered = {
+	people:[] 
+	,events:[]
+	,minDate:Number.MAX_SAFE_INTEGER
+	,maxDate:Number.MIN_SAFE_INTEGER	
+};
 
 //TODO: Allow this to be user editable
 function getColor(titles){
