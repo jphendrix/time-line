@@ -64,7 +64,7 @@ $(function(){
 					break;
 				case "event_timeline":
 					var e = find("events",item.name)
-					if(e != false){
+					if(e !== false){
 						e.timeline.push(item);
 					}else{
 						orphaned_things.push(item);
@@ -85,7 +85,7 @@ $(function(){
 					break
 				case "person_timeline":
 					var p = find("people",item.name)
-					if(p != false){
+					if(p !== false){
 						p.timeline.push(item);
 					}else{
 						orphaned_things.push(item);
@@ -101,7 +101,7 @@ $(function(){
 				,name:jdata.feed.entry[i].gsx$name.$t
 				,title:jdata.feed.entry[i].gsx$title.$t
 				,start:jdata.feed.entry[i].gsx$start.$t
-				,end:jdata.feed.entry[i].gsx$end.$t == ""?"3/16/2018":jdata.feed.entry[i].gsx$end.$t
+				,end:jdata.feed.entry[i].gsx$end.$t === ""?"3/16/2018":jdata.feed.entry[i].gsx$end.$t
 				,timeline:[]
 				,getRec: function(xOffSet,yOffset,xScale,yScale){return{x:0,y:0,width:0,height:0}}
 			}
