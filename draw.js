@@ -1,14 +1,14 @@
 //TODO: Hold the shape & offset info
 var data = {
-	people:[]
-	,events:[]
+	person:[]
+	,event:[]
 	,minDate:Number.MAX_SAFE_INTEGER
 	,maxDate:Number.MIN_SAFE_INTEGER
 };
 	
 var filtered = {
-	people:[] 
-	,events:[]
+	person:[] 
+	,event:[]
 	,minDate:Number.MAX_SAFE_INTEGER
 	,maxDate:Number.MIN_SAFE_INTEGER	
 };
@@ -44,55 +44,44 @@ $(function(){
 	$("#C").width($( window ).width()-10);
 	$( window ).resize(function() {
 		$("#C").width($( window ).width()-10);
-		draw(filtered.people.length==0?data:filtered);
+		draw(filtered.person.length==0?data:filtered);
 	});
 	ctx = $("#C")[0].getContext("2d");	
-	$("select[name=people]").change(function(){draw(filterData())});
-	$("select[name=events]").change(function(){draw(filterData())});
+	$("select[name=person]").change(function(){draw(filterData())});
+	$("select[name=event]").change(function(){draw(filterData())});
 	
 	//TODO: Allow user to change data source
-    $.getJSON("https://spreadsheets.google.com/feeds/list/1p7N271XNTghpJhdP7qXsFaBZcFNRuG-npiUZK-1ZTAY/od6/public/values?alt=json", function (jdata) {
+  $.getJSON("https://spreadsheets.google.com/feeds/list/1p7N271XNTghpJhdP7qXsFaBZcFNRuG-npiUZK-1ZTAY/od6/public/values?alt=json", function (jdata) {
 		var orphaned_things = []
 		function addItem(item){
 			switch(item.type){
 				default:
+					console.log(item);
 					break;
-				case "event": 
-					data.events.push(item); 
+				case "event":
+				case "person":
+					data[item.type].push(item); 
 
 					//Build title filter
 					var titles = item.title.split(',');
 					for(var i=0; i<titles.length; i++){
-						var optionExists = ($("select[name=events] option[value='" + titles[i].toUpperCase() + "']").length > 0);
+						var optionExists = ($("select[name="+item.type+"] option[value='" + titles[i].toUpperCase() + "']").length > 0);
 						if(!optionExists)
 						{
-							$('select[name=events]').append("<option value='"+titles[i].toUpperCase()+"'>"+titles[i]+"</option>");
+							$("select[name="+item.type+"]").append("<option value='"+titles[i].toUpperCase()+"'>"+titles[i]+"</option>");
 						}
 					}
 					break;
 				case "event_timeline":
-					var e = find("events",item.name)
+					var e = find("event",item.name)
 					if(e !== false){
 						e.timeline.push(item);
 					}else{
 						orphaned_things.push(item);
 					}
 					break;
-				case "person": 
-					data.people.push(item); 
-					
-					//Build title filter
-					var titles = item.title.split(',');
-					for(var i=0; i<titles.length; i++){
-						var optionExists = ($("select[name=people] option[value='" + titles[i].toUpperCase() + "']").length > 0);
-						if(!optionExists)
-						{
-							$('select[name=people]').append("<option value='"+titles[i].toUpperCase()+"'>"+titles[i]+"</option>");
-						}
-					}
-					break
 				case "person_timeline":
-					var p = find("people",item.name)
+					var p = find("person",item.name)
 					if(p !== false){
 						p.timeline.push(item);
 					}else{
@@ -117,59 +106,56 @@ $(function(){
 			addItem(item);
 			
 			for(var j=0; j<orphaned_things.length; j++){
-				addItem(orphaned_things[j]);
+				//addItem(orphaned_things[j]);
 			}
 		}
 		draw(data);
-    });
+  });
 });
 
 var addedItems = [];
 function filterData(){
-	filtered = {people:[], events:[]};
-	var people = $("select[name=people]").val().map(function(x){return x.toUpperCase()});
-	var events = $("select[name=events]").val().map(function(x){return x.toUpperCase()});
+	filtered.person.length =0; filtered.event.length=0; filtered.minDate=Number.MAX_SAFE_INTEGER; filtered.maxDate=Number.MIN_SAFE_INTEGER;
+	var people = $("select[name=person]").val().map(function(x){return x.toUpperCase()});
+	var events = $("select[name=event]").val().map(function(x){return x.toUpperCase()});
 	
 	var minDate = Number.MAX_SAFE_INTEGER
 	var maxDate = Number.MIN_SAFE_INTEGER
 	
-	var isPersonFilter = false;
-	var isEventFilter = false;
 	addedItems = [];
-	for(var i=0; i<data.people.length; i++){
+	for(var i=0; i<data.person.length; i++){
 		
-		if( $.inArray(data.people[i].name,addedItems) >=0 ){  continue;}
-		var titles = data.people[i].title.split(',').map(function(x){return x.toUpperCase()})
+		if( $.inArray(data.person[i].name,addedItems) >=0 ){  continue;}
+		var titles = data.person[i].title.split(',').map(function(x){return x.toUpperCase()})
 		for(var j=0; j<titles.length; j++){
 			if($.inArray(titles[j],people)>=0){
-				var start = (new Date(data.people[i].start))*1;
-				var end = (new Date(data.people[i].end))*1;
+				var start = (new Date(data.person[i].start))*1;
+				var end = (new Date(data.person[i].end))*1;
 				
 				if(start<minDate){minDate = start; }
 				if(end>maxDate){maxDate = end;}
-				isPersonFilter = true;
-				filtered.people.push( JSON.parse(JSON.stringify(data.people[i])) )
-				addedItems.push(data.people[i].name);
+				filtered.person.push( JSON.parse(JSON.stringify(data.person[i])) )
+				addedItems.push(data.person[i].name);
 				break;
 			}
 		}
 	}
 	
-	for(var i=0; i<data.events.length; i++){
+	for(var i=0; i<data.event.length; i++){
 		
-		if( $.inArray(data.events[i].name,addedItems) >=0 ){continue;}
+		if( $.inArray(data.event[i].name,addedItems) >=0 ){continue;}
 		
-		var titles = data.events[i].title.split(',').map(function(x){return x.toUpperCase()})
+		var titles = data.event[i].title.split(',').map(function(x){return x.toUpperCase()})
 		for(var j=0; j<titles.length; j++){
 			if($.inArray(titles[j],events)>=0){
-				var start = (new Date(data.events[i].start))*1;
-				var end = (new Date(data.events[i].end))*1;
+				var start = (new Date(data.event[i].start))*1;
+				var end = (new Date(data.event[i].end))*1;
 				
 				if(start<minDate){minDate = start; }
 				if(end>maxDate){maxDate = end;}
 				isEventFilter = true;
-				filtered.events.push( JSON.parse(JSON.stringify(data.events[i])) )
-				addedItems.push(data.events[i].name);
+				filtered.event.push( JSON.parse(JSON.stringify(data.event[i])) )
+				addedItems.push(data.event[i].name);
 				break;
 			}
 		}
@@ -235,20 +221,20 @@ function draw(d){
 	var xOffset = 0;
 	var xScale = 0;
 	
-	for(var i=0; i<d.people.length; i++){
-		if(!d.people[i].name){continue;}
+	for(var i=0; i<d.person.length; i++){
+		if(!d.person[i].name){continue;}
 		
-		var start = (new Date(d.people[i].start))*1;
-		var end = (new Date(d.people[i].end))*1;
+		var start = (new Date(d.person[i].start))*1;
+		var end = (new Date(d.person[i].end))*1;
 		
 		if(start<minDate){minDate = start;}
 		if(end>maxDate){maxDate = end;}
 	}
 	
-	for(var i=0; i<d.events.length; i++){
-		if(!d.events[i].name){continue;}
-		var start = (new Date(d.events[i].start))*1;
-		var end = (new Date(d.events[i].end))*1;
+	for(var i=0; i<d.event.length; i++){
+		if(!d.event[i].name){continue;}
+		var start = (new Date(d.event[i].start))*1;
+		var end = (new Date(d.event[i].end))*1;
 		
 		if(start<minDate){minDate = start;}
 		if(end>maxDate){maxDate = end;}
@@ -258,10 +244,10 @@ function draw(d){
 	yOffset = 50;
 	xScale = ((maxDate+xOffset)-(minDate + xOffset))/1400;
 
-	for(var i=0; i<d.events.length; i++){
-		if(!d.events[i].name){continue;}
-		var x = (new Date(d.events[i].start))*1;
-		var y = (new Date(d.events[i].end))*1;
+	for(var i=0; i<d.event.length; i++){
+		if(!d.event[i].name){continue;}
+		var x = (new Date(d.event[i].start))*1;
+		var y = (new Date(d.event[i].end))*1;
 		
 		x = (x+xOffset)/xScale;
 		y = (y+xOffset)/xScale;
@@ -271,29 +257,29 @@ function draw(d){
 		ctx.fillStyle = 'black';
 		ctx.strokeStyle = 'black';
 		ctx.textAlign = 'left';
-		ctx.fillText(d.events[i].title,x+5,10);
+		ctx.fillText(d.event[i].title,x+5,10);
 		ctx.lineWidth=0.5;
 		ctx.rect(x,0,w,$("#C").height());
 		
 		ctx.beginPath();
-		ctx.fillStyle = getColor(d.events[i].title)
-		ctx.strokeStyle = getColor(d.events[i].title)
+		ctx.fillStyle = getColor(d.event[i].title)
+		ctx.strokeStyle = getColor(d.event[i].title)
 		ctx.globalAlpha=0.2;
 		ctx.fillRect(x,0,w,$("#C").height());
 		ctx.stroke();
 	}
 	
-	for(var i=0; i<d.people.length; i++){
-		if(!d.people[i].name){continue;}
-		var foo = d.people[i].name;
-		var x1 = (new Date(d.people[i].start))*1;
-		var x2 = (new Date(d.people[i].end))*1;
+	for(var i=0; i<d.person.length; i++){
+		if(!d.person[i].name){continue;}
+		var foo = d.person[i].name;
+		var x1 = (new Date(d.person[i].start))*1;
+		var x2 = (new Date(d.person[i].end))*1;
 		
 		x1 = (x1+xOffset)/xScale;
 		x2 = (x2+xOffset)/xScale;
 		w = (x2) - x1;
 		
-		var row = getRowAssignment(d.people[i].name,x1,x1+w);
+		var row = getRowAssignment(d.person[i].name,x1,x1+w);
 		
 		ctx.beginPath();
 		ctx.globalAlpha=1;
@@ -301,18 +287,18 @@ function draw(d){
 		ctx.strokeStyle = 'black';
 		ctx.lineWidth=1;
 		ctx.rect(x1,yOffset+(row*50),w,45);
-		ctx.fillText(d.people[i].name,x1+5,yOffset+(row*50)+10);
+		ctx.fillText(d.person[i].name,x1+5,yOffset+(row*50)+10);
 		ctx.stroke();
 		
 		ctx.beginPath();
-		ctx.fillStyle = getColor(d.people[i].title)
-		ctx.strokeStyle = getColor(d.people[i].title)
+		ctx.fillStyle = getColor(d.person[i].title)
+		ctx.strokeStyle = getColor(d.person[i].title)
 		ctx.globalAlpha=0.2;
 		ctx.fillRect(x1,yOffset+(row*50),w,45);
 		
 		
 
-		var timeline = d.people[i].timeline;
+		var timeline = d.person[i].timeline;
 		for(var j=0; j<timeline.length; j++){
 			var tx = (new Date(timeline[j].start)*1);
 			var ty = (new Date(timeline[j].end)*1);
