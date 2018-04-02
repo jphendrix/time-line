@@ -4,15 +4,52 @@ var data = {
 	,event:[]
 	,minDate:Number.MAX_SAFE_INTEGER
 	,maxDate:Number.MIN_SAFE_INTEGER
+	,filter: function(args){
+		var filtered = {
+			person:[] 
+			,event:[]
+			,minDate:Number.MAX_SAFE_INTEGER
+			,maxDate:Number.MIN_SAFE_INTEGER	
+		};
+		var addedItems = [];
+		
+		//Key will be either "person" or "event"
+		for(var key in args){
+			for(var i=0; i<this[key].length; i++){
+
+				//Skip this one if already included
+				if( $.inArray(this[key][i].name,addedItems) >=0 ){  continue;}
+
+				//Apply this filter to any title associateed with this entry
+				var titles = this[key][i].title.split(',').map(function(x){return x.toUpperCase()})
+
+				for(var j=0; j<titles.length; j++){
+					if($.inArray(titles[j],args[key])>=0){
+						var start = (new Date(this[key][i].start))*1;
+						var end = (new Date(this[key][i].end))*1;
+
+						if(start<filtered.minDate){filtered.minDate = start; }
+						if(end>filtered.maxDate){filtered.maxDate = end;}
+						filtered[key].push( JSON.parse(JSON.stringify(this[key][i])) );
+						addedItems.push(this[key][i].name);
+						break;
+					}
+				}
+			}
+		}
+		
+		return filtered;
+	}
+	,find: function(args){
+		for(var i=0; i<this[args.type].length; i++){
+			if(this[args.type][i].name == args.name){
+				return {success:true, result:this[args.type][i]};
+			}
+		}
+		return {success:false, result:{}};
+	}
 };
 	
-var filtered = {
-	person:[] 
-	,event:[]
-	,minDate:Number.MAX_SAFE_INTEGER
-	,maxDate:Number.MIN_SAFE_INTEGER	
-};
-
 //TODO: Allow this to be user editable
 function getColor(titles){
 	var colors = {
@@ -41,27 +78,49 @@ var lines = [];
 var ctx;
 
 $(function(){
+	//Set the canvas to the window size
 	$("#C").width($( window ).width()-10);
 	$( window ).resize(function() {
 		$("#C").width($( window ).width()-10);
-		draw(filtered.person.length==0?data:filtered);
+		draw(filtered.person.length===0?data:filtered);
 	});
-	ctx = $("#C")[0].getContext("2d");	
+	
+	//Setup on change handlers for filters
 	$("select[name=person]").change(function(){draw(filterData())});
 	$("select[name=event]").change(function(){draw(filterData())});
 	
-	//TODO: Allow user to change data source
-  $.getJSON("https://spreadsheets.google.com/feeds/list/1p7N271XNTghpJhdP7qXsFaBZcFNRuG-npiUZK-1ZTAY/od6/public/values?alt=json", function (jdata) {
-		var orphaned_things = []
-		function addItem(item){
+	//Get canvas drawing context
+	ctx = $("#C")[0].getContext("2d");
+	
+	//Read data from Google Doc
+	readData("https://spreadsheets.google.com/feeds/list/1p7N271XNTghpJhdP7qXsFaBZcFNRuG-npiUZK-1ZTAY/od6/public/values?alt=json");
+});
+
+function readData(source){
+  $.getJSON(source, function (jdata) {
+		/*
+		It is possible for a sub timeline to be in the file before the parent event/person.
+		If this happens, hold onto the sub timeline and try to process it after all
+		of the other events/people have been loaded.
+		*/
+		var orphaned_things = [];
+		
+		/*
+		Push all of the events/people to the container object
+		*/
+		function addItem(item, allow_orphans){
 			switch(item.type){
-				default:
-					console.log(item);
-					break;
+				default: break;
 				case "event":
 				case "person":
 					data[item.type].push(item); 
 
+					var start = item.start
+					var end = item.end
+
+					if(start<data.minDate){data.minDate = start; }
+					if(end>data.maxDate){data.maxDate = end;}
+					
 					//Build title filter
 					var titles = item.title.split(',');
 					for(var i=0; i<titles.length; i++){
@@ -73,104 +132,47 @@ $(function(){
 					}
 					break;
 				case "event_timeline":
-					var e = find("event",item.name)
-					if(e !== false){
-						e.timeline.push(item);
-					}else{
-						orphaned_things.push(item);
-					}
-					break;
 				case "person_timeline":
-					var p = find("person",item.name)
-					if(p !== false){
-						p.timeline.push(item);
+					//This is a sub timeline and needs a parent to be attached to.
+					var type = item.type.split('_')[0]; //Get the type before the underscore.  Either "event" or "person".
+					var e = data.find({type:type, name:item.name})
+					if(e.success === true){
+						e.result.timeline.push(item); //We have a parent thing
 					}else{
-						orphaned_things.push(item);
+						if(allow_orphans){orphaned_things.push(item);} //This sub timeline is orphaned but we might have it later.  Will re-try.
 					}
 					break;
 			}
 		}
 		
+		//TODO: Add a check to make sure the columns we expect are actualy present.
 		for(var i=0; i<jdata.feed.entry.length; i++){
-			
 			var item = {
 				type:jdata.feed.entry[i].gsx$type.$t
 				,name:jdata.feed.entry[i].gsx$name.$t
 				,title:jdata.feed.entry[i].gsx$title.$t
-				,start:jdata.feed.entry[i].gsx$start.$t
-				,end:jdata.feed.entry[i].gsx$end.$t === ""?"3/16/2018":jdata.feed.entry[i].gsx$end.$t
+				,start:   (new Date(jdata.feed.entry[i].gsx$start.$t))*1    
+				,end:jdata.feed.entry[i].gsx$end.$t === ""?(new Date())*1:(new Date(jdata.feed.entry[i].gsx$end.$t))*1
 				,timeline:[]
-				,getRec: function(xOffSet,yOffset,xScale,yScale){return{x:0,y:0,width:0,height:0}}
 			}
 			
-			addItem(item);
-			
-			for(var j=0; j<orphaned_things.length; j++){
-				//addItem(orphaned_things[j]);
-			}
+			addItem(item,true);
 		}
+		
+		for(var j=0; j<orphaned_things.length; j++){
+			addItem(orphaned_things[j],false);
+		}
+		
+		//For now this has to be here b/c of the async
 		draw(data);
   });
-});
-
-var addedItems = [];
-function filterData(){
-	filtered.person.length =0; filtered.event.length=0; filtered.minDate=Number.MAX_SAFE_INTEGER; filtered.maxDate=Number.MIN_SAFE_INTEGER;
-	var people = $("select[name=person]").val().map(function(x){return x.toUpperCase()});
-	var events = $("select[name=event]").val().map(function(x){return x.toUpperCase()});
-	
-	var minDate = Number.MAX_SAFE_INTEGER
-	var maxDate = Number.MIN_SAFE_INTEGER
-	
-	addedItems = [];
-	for(var i=0; i<data.person.length; i++){
-		
-		if( $.inArray(data.person[i].name,addedItems) >=0 ){  continue;}
-		var titles = data.person[i].title.split(',').map(function(x){return x.toUpperCase()})
-		for(var j=0; j<titles.length; j++){
-			if($.inArray(titles[j],people)>=0){
-				var start = (new Date(data.person[i].start))*1;
-				var end = (new Date(data.person[i].end))*1;
-				
-				if(start<minDate){minDate = start; }
-				if(end>maxDate){maxDate = end;}
-				filtered.person.push( JSON.parse(JSON.stringify(data.person[i])) )
-				addedItems.push(data.person[i].name);
-				break;
-			}
-		}
-	}
-	
-	for(var i=0; i<data.event.length; i++){
-		
-		if( $.inArray(data.event[i].name,addedItems) >=0 ){continue;}
-		
-		var titles = data.event[i].title.split(',').map(function(x){return x.toUpperCase()})
-		for(var j=0; j<titles.length; j++){
-			if($.inArray(titles[j],events)>=0){
-				var start = (new Date(data.event[i].start))*1;
-				var end = (new Date(data.event[i].end))*1;
-				
-				if(start<minDate){minDate = start; }
-				if(end>maxDate){maxDate = end;}
-				isEventFilter = true;
-				filtered.event.push( JSON.parse(JSON.stringify(data.event[i])) )
-				addedItems.push(data.event[i].name);
-				break;
-			}
-		}
-	}
-
-	return filtered;
 }
-function find(what, which){
-	for(var i=0; i<data[what].length; i++){
-		if(data[what][i].name == which){
-			return data[what][i];
-		}
-	}
+
+function filterData(){
+	var person = $("select[name=person]").val().map(function(x){return x.toUpperCase()});
+	var event = $("select[name=event]").val().map(function(x){return x.toUpperCase()});
 	
-	return false;
+	return data.filter({person:person,event:event});
 }
 
 //TODO: refactor as intersect function to allow re-use for mouse over context
@@ -216,38 +218,17 @@ function getRowAssignment(who,start,end){
 function draw(d){
 	ctx.clearRect(0, 0, $("#C").width()*2, $("#C").height()*2);
 	lines = [];
-	var minDate = Number.MAX_SAFE_INTEGER
-	var maxDate = Number.MIN_SAFE_INTEGER
 	var xOffset = 0;
 	var xScale = 0;
 	
-	for(var i=0; i<d.person.length; i++){
-		if(!d.person[i].name){continue;}
-		
-		var start = (new Date(d.person[i].start))*1;
-		var end = (new Date(d.person[i].end))*1;
-		
-		if(start<minDate){minDate = start;}
-		if(end>maxDate){maxDate = end;}
-	}
-	
-	for(var i=0; i<d.event.length; i++){
-		if(!d.event[i].name){continue;}
-		var start = (new Date(d.event[i].start))*1;
-		var end = (new Date(d.event[i].end))*1;
-		
-		if(start<minDate){minDate = start;}
-		if(end>maxDate){maxDate = end;}
-	}
-	
-	xOffset = minDate*-1;
+	xOffset = d.minDate*-1;
 	yOffset = 50;
-	xScale = ((maxDate+xOffset)-(minDate + xOffset))/1400;
+	xScale = ((d.maxDate+xOffset)-(d.minDate + xOffset))/1400;
 
 	for(var i=0; i<d.event.length; i++){
 		if(!d.event[i].name){continue;}
-		var x = (new Date(d.event[i].start))*1;
-		var y = (new Date(d.event[i].end))*1;
+		var x = d.event[i].start;
+		var y = d.event[i].end;
 		
 		x = (x+xOffset)/xScale;
 		y = (y+xOffset)/xScale;
@@ -272,8 +253,8 @@ function draw(d){
 	for(var i=0; i<d.person.length; i++){
 		if(!d.person[i].name){continue;}
 		var foo = d.person[i].name;
-		var x1 = (new Date(d.person[i].start))*1;
-		var x2 = (new Date(d.person[i].end))*1;
+		var x1 = d.person[i].start;
+		var x2 = d.person[i].end;
 		
 		x1 = (x1+xOffset)/xScale;
 		x2 = (x2+xOffset)/xScale;
@@ -300,8 +281,8 @@ function draw(d){
 
 		var timeline = d.person[i].timeline;
 		for(var j=0; j<timeline.length; j++){
-			var tx = (new Date(timeline[j].start)*1);
-			var ty = (new Date(timeline[j].end)*1);
+			var tx = timeline[j].start;
+			var ty = timeline[j].end;
 			
 			tx = (tx+xOffset)/xScale;
 			ty = (ty+xOffset)/xScale;
