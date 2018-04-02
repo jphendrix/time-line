@@ -213,11 +213,11 @@ function getRowAssignment(who,start,end){
 	return lines.length-1;
 }	
 
-//TODO: separate out the data from the drawing
-//TODO: add mouse over context
+var drawnItems = {}; //Keep track of what is actually on the screen (for mouse events)
 function draw(d){
 	ctx.clearRect(0, 0, $("#C").width()*2, $("#C").height()*2);
 	lines = [];
+	drawnItems = {};
 	var xOffset = 0;
 	var xScale = 0;
 	
@@ -248,6 +248,8 @@ function draw(d){
 		ctx.globalAlpha=0.2;
 		ctx.fillRect(x,0,w,$("#C").height());
 		ctx.stroke();
+		
+		drawnItems['e'+i] = {type:'event', name:d.event[i].name, x:x, y:0,w:w,h:$("#C").height()};
 	}
 	
 	for(var i=0; i<d.person.length; i++){
@@ -277,8 +279,8 @@ function draw(d){
 		ctx.globalAlpha=0.2;
 		ctx.fillRect(x1,yOffset+(row*50),w,45);
 		
+		drawnItems['p'+i] = {type:'person', name:d.person[i].name, x:x1, y:yOffset+(row*50),w:w,h:45};
 		
-
 		var timeline = d.person[i].timeline;
 		for(var j=0; j<timeline.length; j++){
 			var tx = timeline[j].start;
