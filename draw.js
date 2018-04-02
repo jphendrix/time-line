@@ -38,6 +38,10 @@ var data = {
 			}
 		}
 		
+		function sortByStartDate(a,b){
+			return ((a.start < b.start) ? -1 : ((a.start > b.start) ? 1 : 0));
+		}
+		filtered.person.sort(sortByStartDate);
 		return filtered;
 	}
 	,find: function(args){
@@ -79,10 +83,11 @@ var ctx;
 
 $(function(){
 	//Set the canvas to the window size
-	$("#C").width($( window ).width()-10);
+	//$("#C").width($( window ).width()-10);
 	$( window ).resize(function() {
-		$("#C").width($( window ).width()-10);
-		draw(filtered.person.length===0?data:filtered);
+		//$("#C").width($( window ).width()-10);
+		//ctx = $("#C")[0].getContext("2d");
+		//draw(filterData());
 	});
 	
 	//Setup on change handlers for filters
@@ -164,7 +169,7 @@ function readData(source){
 		}
 		
 		//For now this has to be here b/c of the async
-		draw(data);
+		draw(data.filter({person:['PRESIDENT'],event:['WAR']}));
   });
 }
 
@@ -223,7 +228,7 @@ function draw(d){
 	
 	xOffset = d.minDate*-1;
 	yOffset = 50;
-	xScale = ((d.maxDate+xOffset)-(d.minDate + xOffset))/1400;
+	xScale = ((d.maxDate+xOffset)-(d.minDate + xOffset))/ctx.canvas.width;
 
 	for(var i=0; i<d.event.length; i++){
 		if(!d.event[i].name){continue;}
@@ -238,7 +243,7 @@ function draw(d){
 		ctx.fillStyle = 'black';
 		ctx.strokeStyle = 'black';
 		ctx.textAlign = 'left';
-		ctx.fillText(d.event[i].title,x+5,10);
+		ctx.fillText(d.event[i].name,x+5,10);
 		ctx.lineWidth=0.5;
 		ctx.rect(x,0,w,$("#C").height());
 		
@@ -278,6 +283,13 @@ function draw(d){
 		ctx.strokeStyle = getColor(d.person[i].title)
 		ctx.globalAlpha=0.2;
 		ctx.fillRect(x1,yOffset+(row*50),w,45);
+		
+		if(d.person[i].name == 'George Washington'){
+			console.log(x1);
+			console.log(yOffset+(row*50));
+			console.log(w);
+			console.log(45);
+		}
 		
 		drawnItems['p'+i] = {type:'person', name:d.person[i].name, x:x1, y:yOffset+(row*50),w:w,h:45};
 		
