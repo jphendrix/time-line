@@ -1,3 +1,4 @@
+//TODO: there has got to be a better way of doing this
 function relMouseCoords(event) {
   var totalOffsetX = 0;
   var totalOffsetY = 0;
@@ -31,7 +32,8 @@ function findTargets(args) {
   targets = [];
   for (var key in drawnItems) {
     var t = drawnItems[key];
-    if (args.x > t.x && args.x < t.x + t.w) {
+    if ((args.x > t.x && args.x < t.x + t.w) &&
+      (args.y > t.y && args.y < t.y + t.h)) {
 
       console.log("found:" + t.x + "," + (t.x + t.w) + "-" + JSON.stringify(t));
       targets.push(data.find({
@@ -43,4 +45,13 @@ function findTargets(args) {
   console.log(targets);
 
   return targets;
+}
+
+function showDetail(target){
+  let $d = $("div.info").html('');
+  
+  for(var i=0; i<target.length; i++){
+    
+  }
+  $d.append("<>")
 }
