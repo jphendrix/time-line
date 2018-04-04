@@ -43,6 +43,7 @@ function findTargets(args) {
     }
   }
   console.log(targets);
+  console.lo
 
   return targets;
 }
