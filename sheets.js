@@ -58,6 +58,7 @@ var data = {
 /**
  * Print the names and majors of students in a sample spreadsheet:
  * https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
+
  https://docs.google.com/spreadsheets/d/1p7N271XNTghpJhdP7qXsFaBZcFNRuG-npiUZK-1ZTAY/edit#gid=0
  https://docs.google.com/spreadsheets/d/1p7N271XNTghpJhdP7qXsFaBZcFNRuG-npiUZK-1ZTAY/edit?usp=sharing
  */
@@ -152,6 +153,7 @@ function readData() {
         person: ['PRESIDENT'],
         event: ['WAR']
       }));
+
     } else {
       console.log('No data found.');
     }
