@@ -12,7 +12,7 @@
 
 <body>
   <!--Add buttons to initiate auth sequence and sign out-->
-  <div id='auth' title='Authorization'>
+  <div id='auth' title='Authorization' style='display:none;'>
     <p>
       This application reads data from a Google spread sheet. Please authorize this application to connect to your Google Sheets account. None of your data will be stored and only files you specify will be read.
     </p>
@@ -30,6 +30,5 @@
   <script async defer src="https://apis.google.com/js/api.js" onload="this.onload=function(){};handleClientLoad()" onreadystatechange="if (this.readyState === 'complete') this.onload()">
   </script>
 </body>
-<div class='test' />
 
 </html>

@@ -38,6 +38,11 @@ var data = {
 			}
 		}
 		
+    function sortByStartDate(a, b) {
+      return ((a.start < b.start) ? -1 : ((a.start > b.start) ? 1 : 0));
+    }
+    filtered.person.sort(sortByStartDate);
+    
 		return filtered;
 	}
 	,find: function(args){
@@ -143,11 +148,30 @@ function readData() {
 
       }
       
-      draw(data);
+      //For now this has to be here b/c of the async
+      draw(data.filter({
+        person: ['PRESIDENT'],
+        event: ['WAR']
+      }));
+
     } else {
       console.log('No data found.');
     }
   }, function(response) {
     console.log('Error: ' + response.result.error.message);
+  });
+}
+
+function filterData() {
+  var person = $("select[name=person]").val().map(function(x) {
+    return x.toUpperCase()
+  });
+  var event = $("select[name=event]").val().map(function(x) {
+    return x.toUpperCase()
+  });
+
+  return data.filter({
+    person: person,
+    event: event
   });
 }
