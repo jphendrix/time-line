@@ -1,21 +1,35 @@
 <html>
-	<head>
-		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-		<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
-		<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
-		<script src="draw.js"></script>
-		<script src="interactions.js"></script>
-	</head>
-	<body>
-		<div>
-			<select name="person" multiple></select>
-			<select name="event" multiple></select>
-		</div>
-		<div>
-			<canvas id="C" width="1500" height="2000" style="border:1px solid #000000;">
+
+<head>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+  <script src="draw.js"></script>
+  <script src="interactions.js"></script>
+  <script src="sheets.js"></script>
+  <script src="auth.js"></script>
+</head>
+
+<body>
+  <!--Add buttons to initiate auth sequence and sign out-->
+  <div id='auth' title='Authorization'>
+    <p>
+      This application reads data from a Google spread sheet. Please authorize this application to connect to your Google Sheets account. None of your data will be stored and only files you specify will be read.
+    </p>
+  </div>
+  <select name="person" multiple></select>
+  <select name="event" multiple></select>
+  </div>
+  <div>
+    <canvas id="C" width="1500" height="2000" style="border:1px solid #000000;">
 			Your browser does not support the HTML5 canvas tag.
 			</canvas>
-		</div>
-	</body>
-	<div class='test'/>
+  </div>
+
+  <!-- load the google API -->
+  <script async defer src="https://apis.google.com/js/api.js" onload="this.onload=function(){};handleClientLoad()" onreadystatechange="if (this.readyState === 'complete') this.onload()">
+  </script>
+</body>
+<div class='test' />
+
 </html>

@@ -1,55 +1,3 @@
-//TODO: Hold the shape & offset info
-var data = {
-	person:[]
-	,event:[]
-	,minDate:Number.MAX_SAFE_INTEGER
-	,maxDate:Number.MIN_SAFE_INTEGER
-	,filter: function(args){
-		var filtered = {
-			person:[] 
-			,event:[]
-			,minDate:Number.MAX_SAFE_INTEGER
-			,maxDate:Number.MIN_SAFE_INTEGER	
-		};
-		var addedItems = [];
-		
-		//Key will be either "person" or "event"
-		for(var key in args){
-			for(var i=0; i<this[key].length; i++){
-
-				//Skip this one if already included
-				if( $.inArray(this[key][i].name,addedItems) >=0 ){  continue;}
-
-				//Apply this filter to any title associateed with this entry
-				var titles = this[key][i].title.split(',').map(function(x){return x.toUpperCase()})
-
-				for(var j=0; j<titles.length; j++){
-					if($.inArray(titles[j],args[key])>=0){
-						var start = (new Date(this[key][i].start))*1;
-						var end = (new Date(this[key][i].end))*1;
-
-						if(start<filtered.minDate){filtered.minDate = start; }
-						if(end>filtered.maxDate){filtered.maxDate = end;}
-						filtered[key].push( JSON.parse(JSON.stringify(this[key][i])) );
-						addedItems.push(this[key][i].name);
-						break;
-					}
-				}
-			}
-		}
-		
-		return filtered;
-	}
-	,find: function(args){
-		for(var i=0; i<this[args.type].length; i++){
-			if(this[args.type][i].name == args.name){
-				return {success:true, result:this[args.type][i]};
-			}
-		}
-		return {success:false, result:{}};
-	}
-};
-	
 //TODO: Allow this to be user editable
 function getColor(titles){
 	var colors = {
@@ -78,13 +26,14 @@ var lines = [];
 var ctx;
 
 $(function(){
+  //TODO: re-size messes up the x/y offset
 	//Set the canvas to the window size
-	$("#C").width($( window ).width()-10);
-	$( window ).resize(function() {
-		$("#C").width($( window ).width()-10);
-		draw(filtered.person.length===0?data:filtered);
-	});
-	
+  //$("#C").width($( window ).width()-10);
+  //$( window ).resize(function() {
+  //  $("#C").width($( window ).width()-10);
+  //  draw(filtered.person.length===0?data:filtered);
+  //});
+
 	//Setup on change handlers for filters
 	$("select[name=person]").change(function(){draw(filterData())});
 	$("select[name=event]").change(function(){draw(filterData())});
@@ -93,80 +42,8 @@ $(function(){
 	ctx = $("#C")[0].getContext("2d");
 	
 	//Read data from Google Doc
-	readData("https://spreadsheets.google.com/feeds/list/1p7N271XNTghpJhdP7qXsFaBZcFNRuG-npiUZK-1ZTAY/od6/public/values?alt=json");
+	//readData("https://spreadsheets.google.com/feeds/list/1p7N271XNTghpJhdP7qXsFaBZcFNRuG-npiUZK-1ZTAY/od6/public/values?alt=json");
 });
-
-function readData(source){
-  $.getJSON(source, function (jdata) {
-		/*
-		It is possible for a sub timeline to be in the file before the parent event/person.
-		If this happens, hold onto the sub timeline and try to process it after all
-		of the other events/people have been loaded.
-		*/
-		var orphaned_things = [];
-		
-		/*
-		Push all of the events/people to the container object
-		*/
-		function addItem(item, allow_orphans){
-			switch(item.type){
-				default: break;
-				case "event":
-				case "person":
-					data[item.type].push(item); 
-
-					var start = item.start
-					var end = item.end
-
-					if(start<data.minDate){data.minDate = start; }
-					if(end>data.maxDate){data.maxDate = end;}
-					
-					//Build title filter
-					var titles = item.title.split(',');
-					for(var i=0; i<titles.length; i++){
-						var optionExists = ($("select[name="+item.type+"] option[value='" + titles[i].toUpperCase() + "']").length > 0);
-						if(!optionExists)
-						{
-							$("select[name="+item.type+"]").append("<option value='"+titles[i].toUpperCase()+"'>"+titles[i]+"</option>");
-						}
-					}
-					break;
-				case "event_timeline":
-				case "person_timeline":
-					//This is a sub timeline and needs a parent to be attached to.
-					var type = item.type.split('_')[0]; //Get the type before the underscore.  Either "event" or "person".
-					var e = data.find({type:type, name:item.name})
-					if(e.success === true){
-						e.result.timeline.push(item); //We have a parent thing
-					}else{
-						if(allow_orphans){orphaned_things.push(item);} //This sub timeline is orphaned but we might have it later.  Will re-try.
-					}
-					break;
-			}
-		}
-		
-		//TODO: Add a check to make sure the columns we expect are actualy present.
-		for(var i=0; i<jdata.feed.entry.length; i++){
-			var item = {
-				type:jdata.feed.entry[i].gsx$type.$t
-				,name:jdata.feed.entry[i].gsx$name.$t
-				,title:jdata.feed.entry[i].gsx$title.$t
-				,start:   (new Date(jdata.feed.entry[i].gsx$start.$t))*1    
-				,end:jdata.feed.entry[i].gsx$end.$t === ""?(new Date())*1:(new Date(jdata.feed.entry[i].gsx$end.$t))*1
-				,timeline:[]
-			}
-			
-			addItem(item,true);
-		}
-		
-		for(var j=0; j<orphaned_things.length; j++){
-			addItem(orphaned_things[j],false);
-		}
-		
-		//For now this has to be here b/c of the async
-		draw(data);
-  });
-}
 
 function filterData(){
 	var person = $("select[name=person]").val().map(function(x){return x.toUpperCase()});
@@ -213,11 +90,25 @@ function getRowAssignment(who,start,end){
 	return lines.length-1;
 }	
 
-var drawnItems = {}; //Keep track of what is actually on the screen (for mouse events)
+//Keep track of what is actually on the screen (for mouse events)
+var drawnItems = {
+  find: function(x,y){
+    var items = [];
+    for(var key in this.items){
+      if( (this.items[key].x <= x && x <= this.items[key].x+this.items[key].w) && (this.items[key].y <= y && y<= this.items[key].y+this.items[key].h)){
+        items.push(this.items[key]);
+      }
+        
+    }
+    
+    return items;
+  },
+  items:{}
+}; 
 function draw(d){
 	ctx.clearRect(0, 0, $("#C").width()*2, $("#C").height()*2);
 	lines = [];
-	drawnItems = {};
+	drawnItems.items = {};
 	var xOffset = 0;
 	var xScale = 0;
 	
@@ -225,7 +116,7 @@ function draw(d){
 	yOffset = 50;
 	xScale = ((d.maxDate+xOffset)-(d.minDate + xOffset))/1400;
 
-	for(var i=0; i<d.event.length; i++){
+	for(let i=0; i<d.event.length; i++){
 		if(!d.event[i].name){continue;}
 		var x = d.event[i].start;
 		var y = d.event[i].end;
@@ -249,10 +140,10 @@ function draw(d){
 		ctx.fillRect(x,0,w,$("#C").height());
 		ctx.stroke();
 		
-		drawnItems['e'+i] = {type:'event', name:d.event[i].name, x:x, y:0,w:w,h:$("#C").height()};
+		drawnItems.items['e'+i] = {type:'event', name:d.event[i].name, x:x, y:0,w:w,h:$("#C").height()};
 	}
 	
-	for(var i=0; i<d.person.length; i++){
+	for(let i=0; i<d.person.length; i++){
 		if(!d.person[i].name){continue;}
 		var foo = d.person[i].name;
 		var x1 = d.person[i].start;
@@ -279,7 +170,7 @@ function draw(d){
 		ctx.globalAlpha=0.2;
 		ctx.fillRect(x1,yOffset+(row*50),w,45);
 		
-		drawnItems['p'+i] = {type:'person', name:d.person[i].name, x:x1, y:yOffset+(row*50),w:w,h:45};
+		drawnItems.items['p'+i] = {type:'person', name:d.person[i].name, x:x1, y:yOffset+(row*50),w:w,h:45};
 		
 		var timeline = d.person[i].timeline;
 		for(var j=0; j<timeline.length; j++){
