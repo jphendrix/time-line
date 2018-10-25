@@ -62,6 +62,7 @@ var data = {
  https://docs.google.com/spreadsheets/d/1p7N271XNTghpJhdP7qXsFaBZcFNRuG-npiUZK-1ZTAY/edit#gid=0
  https://docs.google.com/spreadsheets/d/1p7N271XNTghpJhdP7qXsFaBZcFNRuG-npiUZK-1ZTAY/edit?usp=sharing
  */
+
 function readData() {
 
   /*
@@ -162,6 +163,7 @@ function readData() {
   });
 }
 
+
 function filterData() {
   var person = $("select[name=person]").val().map(function(x) {
     return x.toUpperCase()
@@ -175,3 +177,89 @@ function filterData() {
     event: event
   });
 }
+
+let history = {
+	explored:[],
+	people:{},
+	events:{}
+};
+
+function search(q){
+  $.getJSON("https://en.wikipedia.org/w/api.php?action=opensearch&format=json&origin=*&search=" + q)
+  .then(function(r){
+    
+    explore(r[1][0],{people:['Template:Infobox person','Template:Sidebar person'],events:['Template:Infobox military conflict']},1);
+    return 
+  })
+}
+
+function explore(article,templates,depth){
+  if(depth<0) return;
+  
+  console.log('exploring ('+depth+'): '+ article);
+  $.getJSON("https://en.wikipedia.org/w/api.php?action=parse&format=json&origin=*&contentmodel=text&contentformat=application/json&page=" +  article)
+  .then(function(r){
+	
+	if(!r.parse.templates){
+		console.log('bug',r);
+		return;
+	}
+	
+	if($.inArray(article,history.explored)>=0){
+		if(history.people[article]){
+			history.people[article].rank += 1;
+		}
+		if(history.events[article]){
+			history.events[article].rank += 1;
+		}
+		return;  //we have already explored this
+	}
+	
+	//Let's not re-pull this data
+	history.explored.push(article);
+	
+    let isValid = false;
+	$html = $(r.parse.text['*']);
+    for(let i=0; i<r.parse.templates.length; i++){
+		
+	  //Check to see if it has cat "Good_articles"
+	  //TODO
+	  
+	  //Does this article have a template we are looking for?
+	  
+      if($.inArray(r.parse.templates[i]['*'],templates.people)>=0){
+        isValid = true;
+		history.people[article] = {
+			rank:0,
+			templates:r.parse.templates
+			};
+		$(['bday', 'birthplace', 'category', 'country-name', 'dday','deathdate', 'deathplace', 'family-name', 'fn', 'given-name','label', 'locality', 'n', 'nickname', 'note', 'org', 'role']).each(function(i,elm){
+			if($html.find('.'+elm).text() != ''){
+				history.people[article][elm] = $html.find('.'+elm).text();
+			}
+		});
+		return;
+        break;
+      }
+	  
+      if($.inArray(r.parse.templates[i]['*'],templates.events)>=0){
+        isValid = true;
+		history.events[article] = {rank:0, templates:r.parse.templates};
+        break;
+      }
+    }
+    
+    if(!isValid){
+	  //console.log('skipping', article, r.parse.templates);
+      return;
+    }
+    
+    for(let i=0; i<r.parse.links.length; i++){
+      if(r.parse.links[i]['*'].indexOf(':')<0){
+        //Omit category and namespace links
+        explore(r.parse.links[i]['*'],templates,depth-1)
+       }
+    }
+  });
+}
+search('George Washingten');
